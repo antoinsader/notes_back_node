@@ -41,46 +41,66 @@ All endpoints using POST
 
 ### /auth:
 - auth/login:
+
   Body: {user_code: "xxxx"}
+
   Returns: {token: "YOUR TOKEN"}
 
 - auth/new_code:
+
   Body: {}
+
   Returns: {user_code: "NEW CODE TO BE USED FOR LOGIN", token: "YOUR TOKEN"}
 
 ### /note_type:
 - note_type/get_all:
+
   Body: {}
+
   Returns: [{note_type_id: "ID", note_type_title: "General notes"},..]
 
 - note_type/insert:
+
   Body: {note_type_title: "NEW NOTE TYPE"}
+
   Returns: {lastId: "ID THAT WAS INSERTED", changes: "NUM OF CHANGES MADE"}
 
 - note_type/update:
+
   Body: {note_type_id: "ID TO BE UPDATED", note_type_title: "UPDATED NOTE TYPE"}
+
   Returns: {changes: "NUM OF CHANGES MADE"}
 
 - note_type/delete:
+
   Body: {note_type_id: "ID TO BE deleted"}
+
   Returns: {changes: "NUM OF CHANGES MADE"}
 
   
 ### /notes:
 - notes/get_all:
+
   Body: {}
+
   Returns: [{note_type_id: "NOTE TYPE ID", content: "Your note content"},..]
 
 - notes/insert:
+
   Body: {note_type_id: "note type id", content:"Content to be inserted"}
+
   Returns: {lastId: "ID THAT WAS INSERTED", changes: "NUM OF CHANGES MADE"}
 
 - notes/update:
+
   Body: {note_id: "ID TO BE UPDATED", note_type_id: "new note type id", content: "UPdated content"}
+
   Returns: {changes: "NUM OF CHANGES MADE"}
 
 - notes/delete:
+
   Body: {note_id: "ID TO BE deleted"}
+
   Returns: {changes: "NUM OF CHANGES MADE"}
 
 
