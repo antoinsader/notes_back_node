@@ -1,0 +1,67 @@
+### Register new code
+POST http://localhost:5000/auth/new_code
+Content-Type: application/json
+
+{}
+
+### Login  code
+POST http://localhost:5000/auth/login
+Content-Type: application/json
+
+{
+    "code": "e83fda"
+}
+
+
+
+### 
+POST http://localhost:5000/note_type/get_all
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMCwiaWF0IjoxNzU5MzIzMjQxLCJleHAiOjE3NTk0MDk2NDF9.qfDVyKI3Z7lqiU9eGr8_3ra0UCWeiZ2bVnbRvLAR-es
+
+{
+    "code": "e83fda"
+}
+
+
+
+### 
+POST http://localhost:5000/notes/get_all
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMCwiaWF0IjoxNzU5MzIzMjQxLCJleHAiOjE3NTk0MDk2NDF9.qfDVyKI3Z7lqiU9eGr8_3ra0UCWeiZ2bVnbRvLAR-es
+
+{
+    "code": "e83fda"
+}
+
+
+### 
+POST http://localhost:5000/notes/insert
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMCwiaWF0IjoxNzU5MzIzMjQxLCJleHAiOjE3NTk0MDk2NDF9.qfDVyKI3Z7lqiU9eGr8_3ra0UCWeiZ2bVnbRvLAR-es
+
+{
+    "note_type_id": "2",
+    "content": "I am new note"
+
+}
+
+### 
+POST http://localhost:5000/note_type/update
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMCwiaWF0IjoxNzU5MzIzMjQxLCJleHAiOjE3NTk0MDk2NDF9.qfDVyKI3Z7lqiU9eGr8_3ra0UCWeiZ2bVnbRvLAR-es
+
+{
+    "note_type_id": 1,
+    "note_type_title": "general-1"
+}
+
+
+### 
+POST http://localhost:5000/note_type/delete
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMCwiaWF0IjoxNzU5MzIzMjQxLCJleHAiOjE3NTk0MDk2NDF9.qfDVyKI3Z7lqiU9eGr8_3ra0UCWeiZ2bVnbRvLAR-es
+
+{
+    "note_type_id": 1
+}
