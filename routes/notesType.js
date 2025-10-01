@@ -14,7 +14,6 @@ const TABLE_NAME = TABLES.NOTE_TYPES.name;
 
 router.post("/get_all", async (req, res) => {
   try {
-    console.log("req.user: ", req.user.user_id)
     const user_id = req.user.user_id;
 
     const rows = await get_from_db({
