@@ -9,41 +9,62 @@ POST http://localhost:5000/auth/login
 Content-Type: application/json
 
 {
-    "code": "e83fda"
+    "code": "6ba38d"
 }
 
+
+
+
+
+### 
+POST http://localhost:5000/note_type/insert
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NTk1MzE3MjYsImV4cCI6MTc1OTYxODEyNn0.Ql9lQwKTZDpqpQXkpIlax2BzpoyEgC32RQ4aO58d5DU
+
+{
+    "note_type_title": "asss-2"
+}
 
 
 ### 
 POST http://localhost:5000/note_type/get_all
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMCwiaWF0IjoxNzU5MzIzMjQxLCJleHAiOjE3NTk0MDk2NDF9.qfDVyKI3Z7lqiU9eGr8_3ra0UCWeiZ2bVnbRvLAR-es
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NTk1MzE3MjYsImV4cCI6MTc1OTYxODEyNn0.Ql9lQwKTZDpqpQXkpIlax2BzpoyEgC32RQ4aO58d5DU
 
 {
-    "code": "e83fda"
-}
-
-
-
-### 
-POST http://localhost:5000/notes/get_all
-Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMCwiaWF0IjoxNzU5MzIzMjQxLCJleHAiOjE3NTk0MDk2NDF9.qfDVyKI3Z7lqiU9eGr8_3ra0UCWeiZ2bVnbRvLAR-es
-
-{
-    "code": "e83fda"
+    "code": "6ba38d"
 }
 
 
 ### 
 POST http://localhost:5000/notes/insert
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NTk1MzE3MjYsImV4cCI6MTc1OTYxODEyNn0.Ql9lQwKTZDpqpQXkpIlax2BzpoyEgC32RQ4aO58d5DU
+
+{
+    "note_type_id": "1",
+    "content": "I am new note"
+
+}
+
+### 
+POST http://localhost:5000/notes/get_all
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyMywiaWF0IjoxNzU5NTI0MTg5LCJleHAiOjE3NTk2MTA1ODl9.u6k7UFBn2ycpqC37EKs2B1rltJgGYdewTDFZFUy67tU
+
+{
+    "code": "e83fda"
+}
+
+
+### 
+POST http://localhost:5000/notes/update
+Content-Type: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMCwiaWF0IjoxNzU5MzIzMjQxLCJleHAiOjE3NTk0MDk2NDF9.qfDVyKI3Z7lqiU9eGr8_3ra0UCWeiZ2bVnbRvLAR-es
 
 {
-    "note_type_id": "2",
-    "content": "I am new note"
-
+    "note_id": 1,
+    "content": "I am new note 2"
 }
 
 ### 

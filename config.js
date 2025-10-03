@@ -9,6 +9,3 @@ export const DB_NAME= "notes_db.db";
 
 export const KEY_LENGTH = 32;
 export const IV_LENGTH = 16;
-
-
-

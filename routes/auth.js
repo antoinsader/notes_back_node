@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { exists_in_db, get_from_db, insert_to_db, logger } from "../db.js";
 import { TABLES } from "../db_config.js";
 import { randomBytes } from "crypto";
+import { authMiddleware } from "../middleware/authMiddleWare.js";
 const router = express.Router();
 const jwt_secret = process.env.JWT_SECRET;
 
@@ -91,6 +92,36 @@ router.post("/new_code", async (req, res) => {
     });
     res.status(501).json({ msg: "Error generating code" });
   }
+});
+
+router.post("/me", authMiddleware, async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const rows = await get_from_db({
+      table: TABLES.USERS.name,
+      columns: ["user_code"],
+      where: {
+        user_id,
+      },
+    });
+
+    if (!rows || rows.length != 1) {
+      logger.warn("Invalid /me attempt", { ip: req.ip, user_id });
+      return res.status(501).json({ msg: "User do not exists" });
+    }
+
+    res.json(rows[0]);
+  } catch (err) {
+    logger.error("Error in auth/me: ", {
+      error: err.message,
+      stack: err.stack,
+    });
+    res.status(501).json({ msg: "Error logging in" });
+  }
+});
+router.post("/logout", async (req, res) => {
+  return res.json({});
 });
 
 export default router;

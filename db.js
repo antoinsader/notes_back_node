@@ -4,7 +4,8 @@ import winston from "winston";
 
 import { DB_NAME, IV_LENGTH, KEY_LENGTH, PROD } from "./config.js";
 import { TABLES } from "./db_config.js";
-import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+import { createCipheriv, createDecipheriv, randomBytes, createHash } from "crypto";
+
 
 const db_verbose = sqlite3.verbose();
 const secretKey = process.env.ENCRYPTION_KEY;
@@ -56,7 +57,8 @@ const decrypt_value = (data) => {
   const iv = Buffer.from(ivHex, "hex");
   const key = getKey(secretKey);
   const decipher = createDecipheriv("aes-256-cbc", key, iv);
-  const decrypted_val = decipher.update(encrypted, "hex", "utf8") + decipher.final("utf8");
+  const decrypted_val =
+    decipher.update(encrypted, "hex", "utf8") + decipher.final("utf8");
 
   return decrypted_val;
 };
@@ -65,14 +67,28 @@ const validate_tbl = (table, columns = []) => {
   const table_def = TABLES[table];
   if (!table_def) throw new Error(`Table ${table} is not registered`);
 
-  if (columns.length > 0) {
-    const validCols = table_def.columns.map((c) => c.field);
-    columns.forEach((col) => {
-      if (!validCols.includes(col) && col != "*") {
-        throw new Error(`Invalid column ${col} for table: ${table}`);
+  const valid_fields = TABLES[table].columns.map(c => c.field);
+  columns.forEach((col) => {
+    if (col == "*") return;
+    if (col.includes(".")) {
+      const [selected_tbl, selected_field] = col.split(".");
+      const valid_foreignTables = TABLES[table].columns
+        .filter((c) => c.foreign)
+        .map((c) => c.foreign.split(".")[0]);
+      if (!valid_foreignTables.includes(selected_tbl)) {
+        throw new Error(`Invalid table ${selected_tbl} for table: ${table}`);
       }
-    });
-  }
+      if (
+        !TABLES[selected_tbl].columns
+          .map((c) => c.field)
+          .includes(selected_field)
+      ) {
+        throw new Error(`Invalid field ${selected_field} for table: ${table}`);
+      }
+    } else if (!valid_fields.includes(col)) {
+      throw new Error(`Invalid column ${col} for table: ${table}`);
+    }
+  });
 };
 
 export const init_db = () => {
@@ -117,42 +133,77 @@ export const exec_async = async (query) => {
   });
 };
 
-export const get_from_db = async ({ table, columns = ["*"], where = {} }) => {
+const encrypt_where = (table, where) => {
+  const enc_cols = TABLES[table].columns
+    .filter((c) => c.encrypted)
+    .map((c) => c.field);
+  return Object.entries(where).map(([w_k, w_v]) =>
+    enc_cols.includes(w_k) ? encrypt_value(w_v) : w_v
+  );
+};
+
+const decrypt_rows = (table, columns, rows) => {
+  const enc_cols = TABLES[table].columns
+    .filter((col) => col.encrypted)
+    .map((c) => c.field);
+  return rows.map((row) => {
+    const new_row = { ...row };
+    columns.forEach((col) => {
+      if (col.includes(".")) {
+        const [tbl, field] = col.split(".");
+        const c = TABLES[tbl].columns.find(
+          (cc) => cc.field == field && cc.encrypted
+        );
+        if (c && new_row[field]) new_row[field] = decrypt_value(new_row[field]);
+      } else if (enc_cols.includes(col) && new_row[col]) {
+        new_row[col] = decrypt_value(new_row[col]);
+      }
+    });
+    return new_row;
+  });
+};
+
+export const get_from_db = async ({
+  table,
+  columns,
+  where = {},
+  not_validate,
+}) => {
   return new Promise(async (resolve, reject) => {
-    validate_tbl(table, [...columns, ...Object.keys(where)]);
+    if (!not_validate) validate_tbl(table, [...columns, ...Object.keys(where)]);
 
-    const encrypted_cols = TABLES[table].columns
-      .filter((ele) => ele.encrypted)
-      .map((ele) => ele.field);
+    const base_cols = columns.filter((col) => !col.includes("."));
+    const joined_cols = columns.filter((col) => col.includes("."));
 
-    const values = Object.entries(where).map(([key, val]) =>
-      encrypted_cols.includes(key) ? encrypt_value(val) : val
-    );
+    const joins = joined_cols
+      .map((col) => {
+        const [tbl, field] = col.split(".");
+        const fk = TABLES[tbl].columns.find((c) => c.primary).field;
+        return ` LEFT JOIN ${tbl} ON ${table}.${fk} = ${tbl}.${fk} `;
+      })
+      .join(" ");
 
-    let query = `SELECT ${columns.join(", ")} FROM ${table}  `;
+    const all_cols = [
+      ...base_cols.map((col) => `${table}.${col}`),
+      ...joined_cols,
+    ];
+    let query = `SELECT ${all_cols.join(", ")} FROM ${table} ${joins}  `;
 
+    const where_values = encrypt_where(table, where);
     if (Object.entries(where).length > 0) {
       const conditions = Object.keys(where)
-        .map((condition_key) => `${condition_key} = ? `)
+        .map((condition_key) => `${table}.${condition_key} = ? `)
         .join(" AND ");
       query += ` WHERE ${conditions}`;
-    }    
-    
+    }
 
-
-    db.all(query, values, (err, rows) => {
+    db.all(query, where_values, (err, rows) => {
       if (err) {
+        console.warn("Query with error: ", query);
+        console.error("error in get_From_db: ", err);
         return reject(err);
       }
-      const encrypt_table_cols = TABLES[table].columns
-        .filter((col) => columns.includes(col.field))
-        .filter((col) => col.encrypted)
-        .map((col) => col.field);
-
-      encrypt_table_cols.forEach((col) => {
-        rows = rows.map((r) => ({ ...r, [col]: decrypt_value(r[col]) }));
-      });
-      resolve(rows);
+      resolve(decrypt_rows(table, columns, rows));
     });
   });
 };
@@ -162,14 +213,7 @@ export const exists_in_db = async ({ table, where = {} }) => {
 
     let query = `SELECT 1 FROM ${table}  `;
 
-    const encrypted_cols = TABLES[table].columns
-      .filter((ele) => ele.encrypted)
-      .map((ele) => ele.field);
-    const values = Object.entries(where).map(([key, val]) =>
-      encrypted_cols.includes(key) ? encrypt_value(val) : val
-    );
-
-
+    const values = encrypt_where(table, where);
 
     if (Object.entries(where).length > 0) {
       const conditions = Object.keys(where)
@@ -180,63 +224,99 @@ export const exists_in_db = async ({ table, where = {} }) => {
       query += ` WHERE ${conditions} `;
     }
 
-
-    db.all(query, values, (err, rows) => {
+    db.get(query, values, (err, rows) => {
       if (err) {
         return reject(err);
       }
-      if (rows && rows.length > 0) {
-        resolve(true);
-      } else {
-        resolve(false);
-      }
+      resolve(!!rows);
     });
   });
 };
-
+const hash_value = (text) => createHash("sha256").update(text).digest("hex");
 export const insert_to_db = async ({ table, data }) => {
-  return new Promise((resolve, reject) => {
-    validate_tbl(table, Object.keys(data));
+  return new Promise(async (resolve, reject) => {
+    try {
+      validate_tbl(table, Object.keys(data));
+      const data_to_enter = { ...data };
 
-    const data_to_enter = { ...data };
+      const hsh_cols = TABLES[table].columns.filter(c => c.hash_col ).map(col => [col.field, col.hash_col]);
+      hsh_cols.forEach(([col_field,hsh_col]) => {
+        data_to_enter[hsh_col] = hash_value(data_to_enter[col_field])
+      })
 
-    const encrypt_table_col_fields = TABLES[table].columns
-      .filter((col) => col.encrypted)
-      .map((col) => col.field);
 
-    encrypt_table_col_fields.forEach((col_field) => {
-      data_to_enter[col_field] = encrypt_value(data_to_enter[col_field]);
-    });
-    const keys = Object.keys(data_to_enter);
-    const values = Object.values(data_to_enter);
-    const placeholders = keys.map(() => "?").join(", ");
-    const query = `INSERT INTO ${table} (${keys.join(
-      ","
-    )}) VALUES (${placeholders})`;
-    console.log("query: " , query);
-
-    db.run(query, values, function (err) {
-      if (err) {
-        return reject(err);
+      if (TABLES[table].unique) {
+        for (const unique of TABLES[table].unique) {
+          const keys = unique.split(",");
+          const where = {};
+          keys.forEach((k) => (where[k] = data_to_enter[k]));
+          const exists = await exists_in_db({ table, where });
+          if (exists) {
+            throw new Error(`Values of ${unique} cannot be duplicated`);
+          }
+        }
       }
-      resolve({ lastId: this.lastID, changes: this.changes });
-    });
+
+      const encrypt_table_col_fields = TABLES[table].columns
+        .filter((col) => col.encrypted)
+        .map((col) => col.field);
+
+      encrypt_table_col_fields.forEach((col_field) => {
+        if (data_to_enter[col_field])
+          data_to_enter[col_field] = encrypt_value(data_to_enter[col_field]);
+      });
+
+      const keys = Object.keys(data_to_enter);
+      const placeholders = keys.map(() => "?").join(", ");
+
+      const values = Object.values(data_to_enter);
+      const query = `INSERT INTO ${table} (${keys.join(
+        ","
+      )}) VALUES (${placeholders})`;
+      console.log("inserting: " , values);
+      console.log("query: " , query);
+      db.run(query, values, function (err) {
+        if (err) {
+          return reject(err);
+        }
+        resolve({ lastId: this.lastID, changes: this.changes });
+      });
+    } catch (ex) {
+      reject(ex);
+    }
   });
 };
 
 export const update_db = async ({ table, data, where = {} }) => {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if (Object.keys(where).length == 0) {
       return reject(new Error("Update requires where clause"));
     }
 
     validate_tbl(table, [...Object.keys(data), ...Object.keys(where)]);
+    const data_to_enter = { ...data };
+
+    const hsh_cols = TABLES[table].columns.filter(c => c.hash_col ).map(col => [col.field, col.hash_col]);
+    hsh_cols.forEach(([col_field,hsh_col]) => {
+      data_to_enter[hsh_col] = hash_value(data_to_enter[col_field])
+    })
+
+
+    if (TABLES[table].unique) {
+      for (const unique of TABLES[table].unique) {
+        const keys = unique.split(",");
+        const where = {};
+        keys.forEach((k) => (where[k] = data_to_enter[k]));
+        const exists = await exists_in_db({ table, where });
+        if (exists) {
+          throw new Error(`Values of ${unique} cannot be duplicated`);
+        }
+      }
+    }
 
     const encrypt_table_col_fields = TABLES[table].columns
       .filter((col) => col.encrypted)
       .map((col) => col.field);
-
-    const data_to_enter = { ...data };
 
     encrypt_table_col_fields.forEach((col_field) => {
       if (data_to_enter[col_field]) {
@@ -279,7 +359,6 @@ export const delete_from_db = async ({ table, where = {} }) => {
     const conditions = Object.keys(where)
       .map((key) => `${key} = ?`)
       .join(" AND ");
-      console.log("conditions: " , conditions)
     const values = Object.values(where);
     const query = `DELETE FROM ${table} where ${conditions}`;
 

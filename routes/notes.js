@@ -6,6 +6,7 @@ import {
   delete_from_db,
   update_db,
   logger,
+  exists_in_db
 } from "../db.js";
 import { TABLES } from "../db_config.js";
 const router = express.Router();
@@ -18,7 +19,7 @@ router.post("/get_all", async (req, res) => {
 
     const rows = await get_from_db({
       table: TABLE_NAME,
-      columns: ["note_id", "note_type_id", "content", "created_at"],
+      columns: ["note_id", "note_type_id", "content", "created_at", "NOTE_TYPES.note_type_title" ],
       where: {
         user_id,
       },
@@ -37,6 +38,27 @@ router.post("/get_all", async (req, res) => {
 router.post("/insert", async (req, res) => {
   try {
     const user_id = req.user.user_id;
+    const note_type_id = req.body.note_type_id;
+
+    const exists = await exists_in_db({
+      table: TABLES.NOTE_TYPES.name,
+      where: {
+        note_type_id: req.body.note_type_id,
+        user_id,
+      },
+    });
+
+    if (!exists) {
+      console.error(
+        "Note typeid: ",
+        note_type_id,
+        " does not exist for user: ",
+        user_id
+      );
+      return res
+        .status(501)
+        .json({ msg: "Note type is not valid" });
+    }
 
     const body = {
       note_type_id: req.body.note_type_id,
